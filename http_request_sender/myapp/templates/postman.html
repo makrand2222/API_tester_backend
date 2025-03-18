@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Django Postman - API Tester</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <h2 class="text-center mb-4">Django Postman - API Tester</h2>
+
+        <div class="card shadow-lg">
+            <div class="card-body">
+                <form id="apiForm">
+                    <div class="mb-3">
+                        <label class="form-label">API URL</label>
+                        <input type="text" id="url" class="form-control" placeholder="Enter API URL" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">HTTP Method</label>
+                        <select id="method" class="form-select">
+                            <option value="GET">GET</option>
+                            <option value="POST">POST</option>
+                            <option value="PUT">PUT</option>
+                            <option value="DELETE">DELETE</option>
+                        </select>
+                    </div>
+
+<div class="mb-3">
+                        <label class="form-label">Headers</label>
+                        <div id="headersContainer">
+                            <div class="input-group mb-2">
+                                <input type="text" class="form-control header-key" list="headerSuggestions" placeholder="Header Key" name="headerKey[]">
+                                <datalist id="headerSuggestions">
+                                    <option value="Authorization">
+                                    <option value="Content-Type">
+                                    <option value="Accept">
+                                    <option value="User-Agent">
+                                    <option value="Cache-Control">
+                                    <option value="Referer">
+                                    <option value="Origin">
+                                </datalist>
+                                <input type="text" class="form-control" placeholder="Header Value" name="headerValue[]">
+                                <button type="button" class="btn btn-danger remove-field">X</button>
+                            </div>
+                        </div>
+                        <button type="button" id="addHeaderField" class="btn btn-secondary">Add Header</button>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Request Body Type</label>
+                        <select id="bodyType" class="form-control">
+                            <option value="json">JSON</option>
+                            <option value="formdata">Form Data</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3" id="jsonBodySection">
+                        <label class="form-label">Request Body (JSON)</label>
+                        <textarea id="body" class="form-control" rows="4" placeholder='{"key": "value"}'></textarea>
+                    </div>
+
+                    <div class="mb-3" id="formDataSection" style="display: none;">
+                        <label class="form-label">Form Data</label>
+                        <div id="formDataContainer">
+                            <div class="input-group mb-2 form-data-row">
+                                <input type="text" class="form-control form-data-key" placeholder="Key">
+                                <select class="form-select form-data-type">
+                                    <option value="text">Text</option>
+                                    <option value="file">File</option>
+                                </select>
+                                <input type="text" class="form-control form-data-value text-value" placeholder="Value">
+                                <input type="file" class="form-control form-data-value file-value" style="display: none;">
+                                <button type="button" class="btn btn-danger remove-field">X</button>
+                            </div>
+                        </div>
+                        <button type="button" id="addFormField" class="btn btn-secondary">Add Field</button>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Send Request</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-4 shadow-lg">
+            <div class="card-body">
+                <h5>Response</h5>
+                <pre id="response" class="bg-dark text-light p-3 rounded" style="min-height: 150px;">Waiting for response...</pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            $("#bodyType").change(function () {
+                if ($(this).val() === "formdata") {
+                    $("#jsonBodySection").hide();
+                    $("#formDataSection").show();
+                } else {
+                    $("#jsonBodySection").show();
+                    $("#formDataSection").hide();
+                }
+            });
+
+            $("#addHeaderField").click(function () {
+                let newRow = `
+
+                            <div class="input-group mb-2 form-data-row">
+                                <input type="text" class="form-control header-key" list="headerSuggestions" placeholder="Header Key" name="headerKey[]">
+                                <datalist id="headerSuggestions">
+                                    <option value="Authorization">
+                                    <option value="Content-Type">
+                                    <option value="Accept">
+                                    <option value="User-Agent">
+                                    <option value="Cache-Control">
+                                    <option value="Referer">
+                                    <option value="Origin">
+                                </datalist>
+                                <input type="text" class="form-control" placeholder="Header Value" name="headerValue[]">
+                                <button type="button" class="btn btn-danger remove-field">X</button>
+                            </div>
+                        
+                `;
+                $("#headersContainer").append(newRow);
+            });
+
+            $("#addFormField").click(function () {
+                let newRow = `
+                    <div class="input-group mb-2 form-data-row">
+                        <input type="text" class="form-control form-data-key" placeholder="Key">
+                        <select class="form-select form-data-type">
+                            <option value="text">Text</option>
+                            <option value="file">File</option>
+                        </select>
+                        <input type="text" class="form-control form-data-value text-value" placeholder="Value">
+                        <input type="file" class="form-control form-data-value file-value" style="display: none;">
+                        <button type="button" class="btn btn-danger remove-field">X</button>
+                    </div>
+                `;
+                $("#formDataContainer").append(newRow);
+            });
+
+            $(document).on("click", ".remove-field", function () {
+                $(this).closest(".form-data-row").remove();
+            });
+
+
+            $(document).on("change", ".form-data-type", function () {
+                let row = $(this).closest(".form-data-row");
+                let textInput = row.find(".text-value");
+                let fileInput = row.find(".file-value");
+
+                if ($(this).val() === "file") {
+                    textInput.hide();
+                    fileInput.show();
+                } else {
+                    textInput.show();
+                    fileInput.hide();
+                }
+            });
+
+            $("#apiForm").submit(function (event) {
+                event.preventDefault();
+
+                let url = $("#url").val();
+                let method = $("#method").val();
+                let bodyType = $("#bodyType").val();
+                let headers = {};
+
+                $(".header-key").each(function (index, element) {
+                    let key = $(element).val();
+                    let value = $(".header-value").eq(index).val();
+                    if (key) {
+                        headers[key] = value;
+                    }
+                });
+
+                let requestData;
+
+                if (bodyType === "formdata") {
+                    requestData = new FormData();
+                    $(".form-data-row").each(function () {
+                        let key = $(this).find(".form-data-key").val();
+                        let type = $(this).find(".form-data-type").val();
+                        let textValue = $(this).find(".text-value").val();
+                        let fileValue = $(this).find(".file-value")[0].files[0];
+
+                        if (key) {
+                            if (type === "text") {
+                                requestData.append(key, textValue);
+                            } else if (type === "file" && fileValue) {
+                                requestData.append(key, fileValue);
+                            }
+                        }
+                    });
+                } else {
+                    try {
+                        requestData = $("#body").val() ? JSON.parse($("#body").val()) : {};
+                    } catch (e) {
+                        $("#response").text("Invalid JSON in body");
+                        return;
+                    }
+                }
+
+                $.ajax({
+                    url: url,
+                    type: method,
+                    headers: headers,
+                    data: bodyType === "json" ? JSON.stringify(requestData) : requestData,
+                    contentType: bodyType === "json" ? "application/json" : false,
+                    processData: bodyType === "json" ? true : false,
+                    success: function (response) {
+                        $("#response").text(JSON.stringify(response, null, 4));
+                    },
+                    error: function (xhr) {
+                        $("#response").text("Error: " + xhr.status + " - " + xhr.responseText);
+                    }
+                });
+            });
+        });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
